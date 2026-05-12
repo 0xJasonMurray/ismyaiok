@@ -182,6 +182,42 @@ main {
 .result-summary ul { margin-top: 0.4rem; padding-left: 1.2rem; }
 .result-summary li { margin-bottom: 0.25rem; }
 
+/* Review request */
+.review-request-wrap {
+  margin-top: 1.25rem;
+  padding: 1rem 1.1rem;
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 8px;
+}
+
+.review-request-intro {
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.55;
+  margin-bottom: 0.85rem;
+}
+
+.review-confirm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.review-confirm-text {
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.6;
+}
+
 /* AUP acknowledgment */
 .aup-wrap {
   margin-top: 1.25rem;
@@ -477,6 +513,25 @@ footer {
     <div id="result-badge-wrap"></div>
     <div class="result-description" id="result-description"></div>
     <div class="result-summary"     id="result-summary"></div>
+
+    <!-- Review request — shown only for Review Required results -->
+    <div id="review-request-wrap" class="review-request-wrap hidden">
+      <div id="review-request-prompt">
+        <p class="review-request-intro">
+          Would you like to automatically submit this use case to the
+          <strong>AI Governance Committee</strong> for evaluation?
+        </p>
+        <button class="btn btn-primary" id="btn-submit-review">Submit for Review</button>
+      </div>
+      <div id="review-request-confirm" class="hidden">
+        <div class="review-confirm-icon">&#10003;</div>
+        <div class="review-confirm-text">
+          <strong>Request submitted.</strong>
+          The AI Governance Committee will review your request and respond within
+          <strong>1&ndash;3 business days</strong>.
+        </div>
+      </div>
+    </div>
 
     <!-- AUP acknowledgment — shown only for approved-model acceptable results -->
     <div id="aup-wrap" class="aup-wrap hidden">
@@ -851,6 +906,18 @@ footer {
 
     document.getElementById('result-summary').innerHTML = summaryHTML;
 
+    // Show review request button for Review Required outcomes
+    const reviewWrap = document.getElementById('review-request-wrap');
+    const reviewPrompt = document.getElementById('review-request-prompt');
+    const reviewConfirm = document.getElementById('review-request-confirm');
+    if (outcome === 'review') {
+      reviewWrap.classList.remove('hidden');
+      reviewPrompt.classList.remove('hidden');
+      reviewConfirm.classList.add('hidden');
+    } else {
+      reviewWrap.classList.add('hidden');
+    }
+
     // Show AUP checkbox whenever an approved model was selected for sensitive data
     const aupWrap  = document.getElementById('aup-wrap');
     const showAup  = (matchedBaa || matchedFerpa) && outcome !== 'notAcceptable';
@@ -910,6 +977,11 @@ footer {
     progressWrap.classList.add('hidden');
     introCard.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  document.getElementById('btn-submit-review').addEventListener('click', () => {
+    document.getElementById('review-request-prompt').classList.add('hidden');
+    document.getElementById('review-request-confirm').classList.remove('hidden');
   });
 
   document.getElementById('aup-checkbox').addEventListener('change', e => {
