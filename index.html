@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Is My AI OK? — AI Governance Check</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="44" height="44" rx="6" fill="#c8102e"/>
+      <text x="22" y="30" font-family="Georgia,serif" font-size="22" font-weight="bold"
+            fill="#ffffff" text-anchor="middle">A</text>
+    </svg>
+  </div>
+  <div>
+    <div class="header-school">Acme University</div>
+    <h1>Is My AI OK?</h1>
+    <div class="subtitle">AI Governance Evaluation Tool &mdash; Office of Information Security</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Intro card -->
+  <div class="card" id="intro-card">
+    <h2>Before you use an AI service&hellip;</h2>
+    <p>
+      Answer a few questions about the AI tool or service you plan to use. Based on
+      Acme University&rsquo;s AI Governance Policy, this tool will tell you whether the
+      service is <strong>acceptable</strong>, requires <strong>additional review</strong>,
+      or is <strong>not acceptable</strong> under current institutional guidelines.
+    </p>
+    <p style="margin-top:0.75rem">This check takes about 2 minutes.</p>
+
+    <div id="service-input-section" style="margin-top:1.25rem">
+      <label for="service-name">AI service or tool name <span style="font-weight:400;color:#999">(optional)</span></label>
+      <input type="text" id="service-name" placeholder="e.g. ChatGPT, GitHub Copilot, Gemini&hellip;" autocomplete="off" />
+    </div>
+
+    <div style="margin-top:1.25rem">
+      <button class="btn btn-primary" id="start-btn">Start Evaluation</button>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div id="progress-bar-wrap" class="hidden">
+    <div id="progress-bar"></div>
+  </div>
+
+  <!-- Question card -->
+  <div class="card hidden" id="question-card">
+    <div id="selected-service-chip" class="selected-service-chip hidden"></div>
+
+    <div class="question-number" id="question-number"></div>
+    <div class="question-text"   id="question-text"></div>
+    <div class="question-hint"   id="question-hint"></div>
+
+    <!-- Answer buttons (hidden on Q1 after Yes is clicked) -->
+    <div class="answer-buttons" id="answer-buttons">
+      <button class="btn btn-yes" id="btn-yes">Yes</button>
+      <button class="btn btn-no"  id="btn-no">No</button>
+    </div>
+
+    <!-- Q1 approved-services panel + Continue — only shown after Yes on Q1 -->
+    <div id="q1-panel"></div>
+    <div id="q1-continue-wrap" class="hidden">
+      <button class="btn btn-primary" id="btn-q1-continue">Continue with Yes &rarr;</button>
+      <button class="btn btn-ghost"   id="btn-q1-no-instead">Answer No instead</button>
+    </div>
+
+    <div style="margin-top:1rem">
+      <button class="btn btn-ghost" id="btn-back" style="font-size:0.85rem;padding:0.4rem 1rem">&#8592; Back</button>
+    </div>
+  </div>
+
+  <!-- Result card -->
+  <div class="card" id="result-card">
+    <div id="result-badge-wrap"></div>
+    <div class="result-description" id="result-description"></div>
+    <div class="result-summary"     id="result-summary"></div>
+    <div class="result-actions">
+      <button class="btn btn-primary" id="btn-restart">Start Over</button>
+      <button class="btn btn-ghost"   id="btn-print">Print / Save as PDF</button>
+    </div>
+  </div>
+
+  <div class="policy-meta" id="policy-meta"></div>
+
+</main>
+
+<footer>
+  &copy; <span id="footer-year"></span> Acme University &mdash; Office of Information Security &mdash;
+  Questions? Contact <a href="mailto:security@acme.edu">security@acme.edu</a>
+</footer>
+
+<script>
+(() => {
+  // ── Governance data ──────────────────────────────────────────────────────
+  const gov = {
+    title: "AI Service Governance Policy",
+    version: "1.2",
+    lastUpdated: "2026-05-12",
+    policyOwner: "Office of Information Security",
+
+    baaApprovedServices: [
+      {
+        name: "ChatGPT",
+        vendor: "OpenAI",
+        approvalType: "hipaa",
+        notes: "BAA executed with OpenAI. Must use the institutional enterprise account — personal or free accounts are NOT covered."
+      }
+    ],
+
+    ferpaApprovedServices: [
+      {
+        name: "Microsoft Copilot",
+        vendor: "Microsoft",
+        approvalType: "ferpa",
+        notes: "Covered under the Acme University Microsoft 365 Education Agreement with FERPA provisions. Institutional account required."
+      },
+      {
+        name: "Google Gemini",
+        vendor: "Google",
+        approvalType: "ferpa",
+        notes: "Covered under the Acme University Google Workspace for Education agreement. Must use your @acme.edu institutional account."
+      }
+    ],
+
+    resultDefinitions: {
+      acceptable: {
+        label: "Acceptable to Use",
+        description: "This AI service appears consistent with institutional policy. Follow standard data handling practices."
+      },
+      review: {
+        label: "Review Required",
+        description: "This use case requires additional review before proceeding. Contact your department's IT liaison or the Office of Information Security."
+      },
+      notAcceptable: {
+        label: "Not Acceptable",
+        description: "This AI service or use case does not meet institutional policy requirements. Do not proceed. Contact the Office of Information Security for guidance."
+      }
+    },
+
+    questions: [
+      {
+        id: "q1",
+        text: "Will this AI service process, store, or transmit data classified as Restricted or Highly Sensitive (e.g., SSNs, medical records, financial account data, authentication credentials)?",
+        hint: "Examples: HIPAA-covered health data, payment card data, Social Security numbers, passwords.",
+        ifYes: "notAcceptable",
+        ifYesBaaOverride: "review"
+      },
+      {
+        id: "q2",
+        text: "Will this AI service process personally identifiable information (PII) such as student records, employee data, or other data covered by FERPA, GDPR, or similar regulations?",
+        hint: "Examples: student grades, employee HR records, EU resident personal data.",
+        ifYes: "review"
+      },
+      {
+        id: "q3",
+        text: "Is this AI service provided by a vendor that has NOT been reviewed and approved by IT Procurement or the Office of Information Security?",
+        hint: "Check the approved vendor list if unsure. New or unknown tools typically require review.",
+        ifYes: "review"
+      },
+      {
+        id: "q4",
+        text: "Will the output of this AI service be used to make or significantly influence high-stakes decisions about individuals (e.g., hiring, admissions, grading, medical treatment)?",
+        hint: "AI-assisted decisions affecting people's opportunities, rights, or wellbeing require human oversight.",
+        ifYes: "review"
+      },
+      {
+        id: "q5",
+        text: "Does this AI service require sharing institutional proprietary information, trade secrets, or unpublished research data with a third-party system?",
+        hint: "Consider whether the data leaving institutional control could cause competitive or legal harm.",
+        ifYes: "review"
+      },
+      {
+        id: "q6",
+        text: "Is this AI service being used in a context where inaccurate or hallucinated output could cause harm, legal liability, or significant institutional risk if not reviewed by a human?",
+        hint: "Examples: legal documents, clinical guidance, financial reporting, public communications.",
+        ifYes: "review"
+      },
+      {
+        id: "q7",
+        text: "Will this AI service be integrated into a production system or automated workflow without human review of its outputs?",
+        hint: "Fully automated AI pipelines require additional security and accuracy review.",
+        ifYes: "review"
+      }
+    ]
+  };
+
+  // ── State ────────────────────────────────────────────────────────────────
+  const questions         = gov.questions;
+  let current             = 0;
+  let answers             = [];
+  let finalResult         = null;
+  let matchedBaa          = null;
+  let matchedFerpa        = null;
+  let selectedServiceName = '';
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────
+  const introCard        = document.getElementById('intro-card');
+  const questionCard     = document.getElementById('question-card');
+  const resultCard       = document.getElementById('result-card');
+  const progressWrap     = document.getElementById('progress-bar-wrap');
+  const progressBar      = document.getElementById('progress-bar');
+  const qNumber          = document.getElementById('question-number');
+  const qText            = document.getElementById('question-text');
+  const qHint            = document.getElementById('question-hint');
+  const answerButtons    = document.getElementById('answer-buttons');
+  const q1Panel          = document.getElementById('q1-panel');
+  const q1ContinueWrap   = document.getElementById('q1-continue-wrap');
+  const btnYes           = document.getElementById('btn-yes');
+  const btnNo            = document.getElementById('btn-no');
+  const btnBack          = document.getElementById('btn-back');
+  const btnQ1Continue    = document.getElementById('btn-q1-continue');
+  const btnQ1NoInstead   = document.getElementById('btn-q1-no-instead');
+  const btnRestart       = document.getElementById('btn-restart');
+  const btnPrint         = document.getElementById('btn-print');
+  const policyMeta       = document.getElementById('policy-meta');
+  const selectedChip     = document.getElementById('selected-service-chip');
+  const serviceInput     = document.getElementById('service-name');
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  policyMeta.textContent =
+    `${gov.title} v${gov.version} — Last updated ${gov.lastUpdated} — ${gov.policyOwner}`;
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+  // Keep matchedBaa/Ferpa in sync if user types on the intro page
+  serviceInput.addEventListener('input', () => {
+    const val = serviceInput.value.trim().toLowerCase();
+    matchedBaa          = val ? gov.baaApprovedServices.find(s => fuzzyMatch(s.name, val))   : null;
+    matchedFerpa        = val ? gov.ferpaApprovedServices.find(s => fuzzyMatch(s.name, val)) : null;
+    selectedServiceName = serviceInput.value.trim();
+  });
+
+  function fuzzyMatch(name, val) {
+    return name.toLowerCase().includes(val) || val.includes(name.toLowerCase());
+  }
+
+  // ── Start ────────────────────────────────────────────────────────────────
+  document.getElementById('start-btn').addEventListener('click', () => {
+    selectedServiceName = serviceInput.value.trim();
+    introCard.classList.add('hidden');
+    progressWrap.classList.remove('hidden');
+    showQuestion(0);
+  });
+
+  // ── Show question ────────────────────────────────────────────────────────
+  function showQuestion(index) {
+    current = index;
+    const q = questions[index];
+    resultCard.style.display = 'none';
+    questionCard.classList.remove('hidden');
+
+    qNumber.textContent = `Question ${index + 1} of ${questions.length}`;
+    qText.textContent   = q.text;
+    qHint.textContent   = q.hint;
+    btnBack.style.visibility = index === 0 ? 'hidden' : 'visible';
+    progressBar.style.width  = (index / questions.length * 100) + '%';
+
+    // Always reset Q1 panel state — panel only appears after Yes is clicked
+    answerButtons.classList.remove('hidden');
+    q1Panel.innerHTML = '';
+    q1ContinueWrap.classList.add('hidden');
+
+    refreshSelectedChip();
+  }
+
+  // ── Q1 panel (rendered only after Yes is clicked) ────────────────────────
+  function showQ1ApprovedPanel() {
+    answerButtons.classList.add('hidden');
+    q1ContinueWrap.classList.remove('hidden');
+
+    const hipaaRows = gov.baaApprovedServices.map(s => approvedRow(s, 'hipaa')).join('');
+    const ferpaRows = gov.ferpaApprovedServices.map(s => approvedRow(s, 'ferpa')).join('');
+
+    q1Panel.innerHTML = `
+      <details class="approved-details" id="approved-details" open>
+        <summary class="approved-summary">
+          <span class="approved-summary-icon">&#9650;</span>
+          Your service handles sensitive data &mdash; check if it is approved below
+        </summary>
+        <div class="approved-body">
+          <div class="approved-group">
+            <div class="approved-group-header approved-group-header--hipaa">
+              HIPAA &mdash; Services with an executed Business Associate Agreement (BAA)
+            </div>
+            ${hipaaRows || '<p class="approved-empty">No HIPAA BAA-approved services on file.</p>'}
+          </div>
+          <div class="approved-group">
+            <div class="approved-group-header approved-group-header--ferpa">
+              FERPA &mdash; Services approved for student education record data
+            </div>
+            ${ferpaRows || '<p class="approved-empty">No FERPA-approved services on file.</p>'}
+          </div>
+          <p class="approved-footer-note">
+            Select your service if it appears above, then click <strong>Continue</strong>.
+            If it is not listed, it is not approved for restricted or regulated data.
+          </p>
+        </div>
+      </details>`;
+
+    // Event delegation for select buttons — attach once per render
+    q1Panel.addEventListener('click', e => {
+      const btn = e.target.closest('[data-select-service]');
+      if (!btn) return;
+      selectServiceFromPanel(btn.dataset.selectService, btn.dataset.selectType);
+    });
+
+    // Arrow toggle
+    const det = document.getElementById('approved-details');
+    det.addEventListener('toggle', () => {
+      det.querySelector('.approved-summary-icon').textContent = det.open ? '▲' : '▼';
+    });
+  }
+
+  function approvedRow(s, type) {
+    const tagClass  = type === 'hipaa' ? 'tag-hipaa' : 'tag-ferpa';
+    const tagLabel  = type === 'hipaa' ? 'HIPAA BAA' : 'FERPA';
+    const isSelected = (type === 'hipaa' && matchedBaa   && matchedBaa.name   === s.name)
+                    || (type === 'ferpa' && matchedFerpa && matchedFerpa.name === s.name);
+    return `
+      <div class="approved-row ${isSelected ? 'approved-row--selected' : ''}">
+        <div class="approved-row-info">
+          <span class="approved-tag ${tagClass}">${tagLabel}</span>
+          <strong>${s.name}</strong> <span class="baa-vendor">(${s.vendor})</span>
+          <div class="baa-notes">${s.notes}</div>
+        </div>
+        <button class="btn btn-select ${isSelected ? 'btn-select--active' : ''}"
+                data-select-service="${s.name}" data-select-type="${type}">
+          ${isSelected ? '&#10003; Selected' : 'Select'}
+        </button>
+      </div>`;
+  }
+
+  function selectServiceFromPanel(name, type) {
+    if (type === 'hipaa') {
+      matchedBaa   = gov.baaApprovedServices.find(s => s.name === name) || null;
+      matchedFerpa = null;
+    } else {
+      matchedFerpa = gov.ferpaApprovedServices.find(s => s.name === name) || null;
+      matchedBaa   = null;
+    }
+    selectedServiceName = name;
+    serviceInput.value  = name;
+
+    // Re-render rows in place (keep panel open)
+    const det         = document.getElementById('approved-details');
+    const wasOpen     = det ? det.open : true;
+    showQ1ApprovedPanel();
+    const detNew      = document.getElementById('approved-details');
+    if (detNew) detNew.open = wasOpen;
+
+    refreshSelectedChip();
+  }
+
+  function refreshSelectedChip() {
+    if (!selectedServiceName) { selectedChip.className = 'selected-service-chip hidden'; return; }
+    let tag = '';
+    if (matchedBaa)   tag = '<span class="chip-tag chip-tag--hipaa">HIPAA BAA</span>';
+    if (matchedFerpa) tag = '<span class="chip-tag chip-tag--ferpa">FERPA Approved</span>';
+    selectedChip.className = 'selected-service-chip';
+    selectedChip.innerHTML = `Evaluating: <strong>${selectedServiceName}</strong> ${tag}`;
+  }
+
+  // ── Answer logic ─────────────────────────────────────────────────────────
+  function outcomeForAnswer(q, answer) {
+    if (answer !== 'yes') return null;
+    if (matchedBaa && q.ifYesBaaOverride) return q.ifYesBaaOverride;
+    return q.ifYes;
+  }
+
+  function recordAnswer(answer) {
+    answers = answers.slice(0, current);
+    answers.push({ questionId: questions[current].id, answer });
+
+    const outcome = outcomeForAnswer(questions[current], answer);
+    if (outcome === 'notAcceptable') { showResult('notAcceptable'); return; }
+
+    if (current + 1 < questions.length) showQuestion(current + 1);
+    else computeResult();
+  }
+
+  function computeResult() {
+    const triggered = answers
+      .map(a => {
+        const q = questions.find(q => q.id === a.questionId);
+        return q ? outcomeForAnswer(q, a.answer) : null;
+      })
+      .filter(Boolean);
+
+    if (triggered.includes('notAcceptable'))  showResult('notAcceptable');
+    else if (triggered.includes('review'))    showResult('review');
+    else                                      showResult('acceptable');
+  }
+
+  // ── Show result ───────────────────────────────────────────────────────────
+  function showResult(outcome) {
+    finalResult = outcome;
+    questionCard.classList.add('hidden');
+    progressBar.style.width = '100%';
+
+    const def   = gov.resultDefinitions[outcome];
+    const svc   = selectedServiceName || serviceInput.value.trim();
+    const label = svc ? `${svc}: ${def.label}` : def.label;
+
+    const badgeClass = { acceptable: 'acceptable', review: 'review', notAcceptable: 'not-acceptable' }[outcome];
+    const icon       = { acceptable: '✓', review: '⚠', notAcceptable: '✕' }[outcome];
+
+    document.getElementById('result-badge-wrap').innerHTML =
+      `<div class="result-badge ${badgeClass}">${icon} ${label}</div>`;
+    document.getElementById('result-description').textContent = def.description;
+
+    let extraNote = '';
+    if (matchedBaa && outcome !== 'notAcceptable') {
+      extraNote = `<div class="baa-result-note">&#10003; <strong>${matchedBaa.name}</strong> has an approved HIPAA BAA. ${matchedBaa.notes}</div>`;
+    } else if (matchedFerpa && outcome !== 'notAcceptable') {
+      extraNote = `<div class="baa-result-note baa-result-note--ferpa">&#10003; <strong>${matchedFerpa.name}</strong> is approved for FERPA-covered data. ${matchedFerpa.notes}</div>`;
+    }
+
+    const flagged = answers.filter(a => a.answer === 'yes');
+    let summaryHTML = extraNote;
+    summaryHTML += flagged.length > 0
+      ? `<strong>Flagged criteria:</strong><ul>` +
+          flagged.map(a => `<li>${questions.find(q => q.id === a.questionId).text}</li>`).join('') +
+        `</ul>`
+      : '<strong>No criteria were flagged.</strong> All questions answered No.';
+
+    document.getElementById('result-summary').innerHTML = summaryHTML;
+    resultCard.style.display = 'block';
+    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Button wiring ─────────────────────────────────────────────────────────
+  btnYes.addEventListener('click', () => {
+    if (questions[current].id === 'q1') {
+      // Show the approved-services panel before committing the answer
+      showQ1ApprovedPanel();
+    } else {
+      recordAnswer('yes');
+    }
+  });
+
+  btnNo.addEventListener('click', () => recordAnswer('no'));
+
+  btnQ1Continue.addEventListener('click', () => recordAnswer('yes'));
+
+  btnQ1NoInstead.addEventListener('click', () => {
+    // User changed mind — reset panel and record No
+    q1Panel.innerHTML = '';
+    q1ContinueWrap.classList.add('hidden');
+    answerButtons.classList.remove('hidden');
+    matchedBaa   = null;
+    matchedFerpa = null;
+    selectedServiceName = serviceInput.value.trim();
+    refreshSelectedChip();
+    recordAnswer('no');
+  });
+
+  btnBack.addEventListener('click', () => { if (current > 0) showQuestion(current - 1); });
+
+  btnRestart.addEventListener('click', () => {
+    answers = []; current = 0; finalResult = null;
+    matchedBaa = null; matchedFerpa = null; selectedServiceName = '';
+    progressBar.style.width = '0%';
+    serviceInput.value = '';
+    selectedChip.className = 'selected-service-chip hidden';
+    resultCard.style.display = 'none';
+    progressWrap.classList.add('hidden');
+    introCard.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  btnPrint.addEventListener('click', () => window.print());
+
+})();
+</script>
+
+</body>
+</html>

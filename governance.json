@@ -1,0 +1,64 @@
+{
+  "title": "AI Service Governance Policy",
+  "version": "1.0",
+  "lastUpdated": "2026-05-12",
+  "policyOwner": "Office of Information Security",
+  "resultDefinitions": {
+    "acceptable": {
+      "label": "Acceptable to Use",
+      "description": "This AI service appears consistent with institutional policy. Follow standard data handling practices."
+    },
+    "review": {
+      "label": "Review Required",
+      "description": "This use case requires additional review before proceeding. Contact your department's IT liaison or the Office of Information Security."
+    },
+    "notAcceptable": {
+      "label": "Not Acceptable",
+      "description": "This AI service or use case does not meet institutional policy requirements. Do not proceed. Contact the Office of Information Security for guidance."
+    }
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "text": "Will this AI service process, store, or transmit data classified as Restricted or Highly Sensitive (e.g., SSNs, medical records, financial account data, authentication credentials)?",
+      "hint": "Examples: HIPAA-covered health data, payment card data, Social Security numbers, passwords.",
+      "ifYes": "notAcceptable"
+    },
+    {
+      "id": "q2",
+      "text": "Will this AI service process personally identifiable information (PII) such as student records, employee data, or other data covered by FERPA, GDPR, or similar regulations?",
+      "hint": "Examples: student grades, employee HR records, EU resident personal data.",
+      "ifYes": "review"
+    },
+    {
+      "id": "q3",
+      "text": "Is this AI service provided by a vendor that has NOT been reviewed and approved by IT Procurement or the Office of Information Security?",
+      "hint": "Check the approved vendor list if unsure. New or unknown tools typically require review.",
+      "ifYes": "review"
+    },
+    {
+      "id": "q4",
+      "text": "Will the output of this AI service be used to make or significantly influence high-stakes decisions about individuals (e.g., hiring, admissions, grading, medical treatment)?",
+      "hint": "AI-assisted decisions affecting people's opportunities, rights, or wellbeing require human oversight.",
+      "ifYes": "review"
+    },
+    {
+      "id": "q5",
+      "text": "Does this AI service require sharing institutional proprietary information, trade secrets, or unpublished research data with a third-party system?",
+      "hint": "Consider whether the data leaving institutional control could cause competitive or legal harm.",
+      "ifYes": "review"
+    },
+    {
+      "id": "q6",
+      "text": "Is this AI service being used in a context where inaccurate or hallucinated output could cause harm, legal liability, or significant institutional risk if not reviewed by a human?",
+      "hint": "Examples: legal documents, clinical guidance, financial reporting, public communications.",
+      "ifYes": "review"
+    },
+    {
+      "id": "q7",
+      "text": "Will this AI service be integrated into a production system or automated workflow without human review of its outputs?",
+      "hint": "Fully automated AI pipelines require additional security and accuracy review.",
+      "ifYes": "review"
+    }
+  ]
+}
