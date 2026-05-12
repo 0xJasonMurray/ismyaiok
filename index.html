@@ -182,6 +182,42 @@ main {
 .result-summary ul { margin-top: 0.4rem; padding-left: 1.2rem; }
 .result-summary li { margin-bottom: 0.25rem; }
 
+/* AUP acknowledgment */
+.aup-wrap {
+  margin-top: 1.25rem;
+  padding: 1rem 1.1rem;
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 8px;
+}
+
+.aup-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.55;
+  cursor: pointer;
+}
+
+.aup-label input[type="checkbox"] {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: #c8102e;
+  cursor: pointer;
+}
+
+.aup-label a { color: #c8102e; font-weight: 500; }
+.aup-label a:hover { text-decoration: underline; }
+
+.btn-disabled {
+  opacity: 0.4;
+  cursor: not-allowed !important;
+}
+
 .result-actions { display: flex; gap: 0.75rem; margin-top: 1.4rem; flex-wrap: wrap; }
 
 .policy-meta { font-size: 0.8rem; color: #999; text-align: center; padding: 1rem 0 2rem; }
@@ -441,6 +477,19 @@ footer {
     <div id="result-badge-wrap"></div>
     <div class="result-description" id="result-description"></div>
     <div class="result-summary"     id="result-summary"></div>
+
+    <!-- AUP acknowledgment — shown only for approved-model acceptable results -->
+    <div id="aup-wrap" class="aup-wrap hidden">
+      <label class="aup-label">
+        <input type="checkbox" id="aup-checkbox" />
+        <span>
+          I have read and agree to abide by the
+          <a href="aup.html" target="_blank">Acme University AI Data Use Policy</a>
+          and all applicable data regulations for the data I am handling.
+        </span>
+      </label>
+    </div>
+
     <div class="result-actions">
       <button class="btn btn-primary" id="btn-restart">Start Over</button>
       <button class="btn btn-ghost"   id="btn-print">Print / Save as PDF</button>
@@ -802,6 +851,20 @@ footer {
       : '<strong>No criteria were flagged.</strong> All questions answered No.';
 
     document.getElementById('result-summary').innerHTML = summaryHTML;
+
+    // AUP acknowledgment checkbox — shown only when approved model grants acceptable outcome
+    const aupWrap = document.getElementById('aup-wrap');
+    if (opts.requireAup) {
+      aupWrap.classList.remove('hidden');
+      document.getElementById('aup-checkbox').checked = false;
+      btnPrint.disabled = true;
+      btnPrint.classList.add('btn-disabled');
+    } else {
+      aupWrap.classList.add('hidden');
+      btnPrint.disabled = false;
+      btnPrint.classList.remove('btn-disabled');
+    }
+
     resultCard.style.display = 'block';
     resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -825,7 +888,8 @@ footer {
       showResult('acceptable', {
         overrideDescription:
           `${approved.name} is approved for this type of data. ` +
-          `You may proceed. ${approved.notes}`
+          `You may proceed as long as you use the approved institutional account described below.`,
+        requireAup: true
       });
     } else {
       recordAnswer('yes');
@@ -850,6 +914,8 @@ footer {
   btnRestart.addEventListener('click', () => {
     answers = []; current = 0; finalResult = null;
     matchedBaa = null; matchedFerpa = null; selectedServiceName = ''; serviceNotListed = false;
+    document.getElementById('aup-checkbox').checked = false;
+    btnPrint.disabled = false; btnPrint.classList.remove('btn-disabled');
     progressBar.style.width = '0%';
     serviceInput.value = '';
     selectedChip.className = 'selected-service-chip hidden';
@@ -859,7 +925,12 @@ footer {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  btnPrint.addEventListener('click', () => window.print());
+  document.getElementById('aup-checkbox').addEventListener('change', e => {
+    btnPrint.disabled = !e.target.checked;
+    btnPrint.classList.toggle('btn-disabled', !e.target.checked);
+  });
+
+  btnPrint.addEventListener('click', () => { if (!btnPrint.disabled) window.print(); });
 
 })();
 </script>
