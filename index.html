@@ -769,7 +769,7 @@ footer {
   }
 
   // ── Show result ───────────────────────────────────────────────────────────
-  function showResult(outcome) {
+  function showResult(outcome, opts = {}) {
     finalResult = outcome;
     questionCard.classList.add('hidden');
     progressBar.style.width = '100%';
@@ -783,7 +783,8 @@ footer {
 
     document.getElementById('result-badge-wrap').innerHTML =
       `<div class="result-badge ${badgeClass}">${icon} ${label}</div>`;
-    document.getElementById('result-description').textContent = def.description;
+    document.getElementById('result-description').textContent =
+      opts.overrideDescription || def.description;
 
     let extraNote = '';
     if (matchedBaa && outcome !== 'notAcceptable') {
@@ -817,7 +818,19 @@ footer {
 
   btnNo.addEventListener('click', () => recordAnswer('no'));
 
-  btnQ1Continue.addEventListener('click', () => recordAnswer('yes'));
+  btnQ1Continue.addEventListener('click', () => {
+    if (matchedBaa || matchedFerpa) {
+      // Approved model selected — no further review needed for this data type
+      const approved = matchedBaa || matchedFerpa;
+      showResult('acceptable', {
+        overrideDescription:
+          `${approved.name} is approved for this type of data. ` +
+          `You may proceed. ${approved.notes}`
+      });
+    } else {
+      recordAnswer('yes');
+    }
+  });
 
   btnQ1NoInstead.addEventListener('click', () => {
     // User changed mind — reset panel and record No
