@@ -559,8 +559,8 @@ footer {
         text: "Will this AI service process, store, or transmit any sensitive or regulated data — including HIPAA-covered health information, FERPA-protected student records, personally identifiable information (PII), financial data, or authentication credentials?",
         hint: "Examples: medical records, student grades, employee HR data, Social Security numbers, payment card data, passwords.",
         ifYes: "notAcceptable",
-        ifYesBaaOverride: "review",
-        ifYesFerpaOverride: "review"
+        ifYesBaaOverride: "acceptable",
+        ifYesFerpaOverride: "acceptable"
       },
       {
         id: "q4",
@@ -818,7 +818,7 @@ footer {
   }
 
   // ── Show result ───────────────────────────────────────────────────────────
-  function showResult(outcome, opts = {}) {
+  function showResult(outcome) {
     finalResult = outcome;
     questionCard.classList.add('hidden');
     progressBar.style.width = '100%';
@@ -832,8 +832,7 @@ footer {
 
     document.getElementById('result-badge-wrap').innerHTML =
       `<div class="result-badge ${badgeClass}">${icon} ${label}</div>`;
-    document.getElementById('result-description').textContent =
-      opts.overrideDescription || def.description;
+    document.getElementById('result-description').textContent = def.description;
 
     let extraNote = '';
     if (matchedBaa && outcome !== 'notAcceptable') {
@@ -852,9 +851,10 @@ footer {
 
     document.getElementById('result-summary').innerHTML = summaryHTML;
 
-    // AUP acknowledgment checkbox — shown only when approved model grants acceptable outcome
-    const aupWrap = document.getElementById('aup-wrap');
-    if (opts.requireAup) {
+    // Show AUP checkbox whenever an approved model was selected for sensitive data
+    const aupWrap  = document.getElementById('aup-wrap');
+    const showAup  = (matchedBaa || matchedFerpa) && outcome !== 'notAcceptable';
+    if (showAup) {
       aupWrap.classList.remove('hidden');
       document.getElementById('aup-checkbox').checked = false;
       btnPrint.disabled = true;
@@ -881,20 +881,7 @@ footer {
 
   btnNo.addEventListener('click', () => recordAnswer('no'));
 
-  btnQ1Continue.addEventListener('click', () => {
-    if (matchedBaa || matchedFerpa) {
-      // Approved model selected — no further review needed for this data type
-      const approved = matchedBaa || matchedFerpa;
-      showResult('acceptable', {
-        overrideDescription:
-          `${approved.name} is approved for this type of data. ` +
-          `You may proceed as long as you use the approved institutional account described below.`,
-        requireAup: true
-      });
-    } else {
-      recordAnswer('yes');
-    }
-  });
+  btnQ1Continue.addEventListener('click', () => recordAnswer('yes'));
 
   btnQ1NoInstead.addEventListener('click', () => {
     // User changed mind — reset panel and record No
