@@ -220,8 +220,9 @@ footer {
   border-radius: 99px;
 }
 
-.chip-tag--hipaa { background: #dcfce7; color: #15803d; }
-.chip-tag--ferpa { background: #dbeafe; color: #1d4ed8; }
+.chip-tag--hipaa    { background: #dcfce7; color: #15803d; }
+.chip-tag--ferpa    { background: #dbeafe; color: #1d4ed8; }
+.chip-tag--unlisted { background: #fee2e2; color: #b91c1c; }
 
 /* Q1 continue buttons */
 #q1-continue-wrap { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
@@ -298,8 +299,14 @@ footer {
   vertical-align: middle;
 }
 
-.tag-hipaa { background: #dcfce7; color: #15803d; }
-.tag-ferpa  { background: #dbeafe; color: #1d4ed8; }
+.tag-hipaa    { background: #dcfce7; color: #15803d; }
+.tag-ferpa    { background: #dbeafe; color: #1d4ed8; }
+.tag-unlisted { background: #fee2e2; color: #b91c1c; }
+
+.not-listed-row { border-top: 1px solid #e9ecef; margin-top: 0.5rem; padding-top: 0.75rem; }
+.not-listed-row--selected { background: #fff7ed; border-color: #fed7aa; }
+
+.btn-select--unlisted-active { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
 
 .btn-select {
   flex-shrink: 0;
@@ -500,16 +507,11 @@ footer {
     questions: [
       {
         id: "q1",
-        text: "Will this AI service process, store, or transmit data classified as Restricted or Highly Sensitive (e.g., SSNs, medical records, financial account data, authentication credentials)?",
-        hint: "Examples: HIPAA-covered health data, payment card data, Social Security numbers, passwords.",
+        text: "Will this AI service process, store, or transmit any sensitive or regulated data — including HIPAA-covered health information, FERPA-protected student records, personally identifiable information (PII), financial data, or authentication credentials?",
+        hint: "Examples: medical records, student grades, employee HR data, Social Security numbers, payment card data, passwords.",
         ifYes: "notAcceptable",
-        ifYesBaaOverride: "review"
-      },
-      {
-        id: "q2",
-        text: "Will this AI service process personally identifiable information (PII) such as student records, employee data, or other data covered by FERPA, GDPR, or similar regulations?",
-        hint: "Examples: student grades, employee HR records, EU resident personal data.",
-        ifYes: "review"
+        ifYesBaaOverride: "review",
+        ifYesFerpaOverride: "review"
       },
       {
         id: "q3",
@@ -552,6 +554,7 @@ footer {
   let matchedBaa          = null;
   let matchedFerpa        = null;
   let selectedServiceName = '';
+  let serviceNotListed    = false;
 
   // ── DOM refs ─────────────────────────────────────────────────────────────
   const introCard        = document.getElementById('intro-card');
@@ -649,9 +652,19 @@ footer {
             </div>
             ${ferpaRows || '<p class="approved-empty">No FERPA-approved services on file.</p>'}
           </div>
+          <div class="approved-row not-listed-row ${serviceNotListed ? 'not-listed-row--selected' : ''}">
+            <div class="approved-row-info">
+              <span class="approved-tag tag-unlisted">Unlisted</span>
+              <strong>My AI model is not listed above</strong>
+              <div class="baa-notes">Unlisted services are not approved for sensitive or regulated data and may not be used with this type of information.</div>
+            </div>
+            <button class="btn btn-select ${serviceNotListed ? 'btn-select--unlisted-active' : ''}"
+                    data-select-service="__unlisted__" data-select-type="unlisted">
+              ${serviceNotListed ? '&#10003; Selected' : 'Select'}
+            </button>
+          </div>
           <p class="approved-footer-note">
-            Select your service if it appears above, then click <strong>Continue</strong>.
-            If it is not listed, it is not approved for restricted or regulated data.
+            Select your service above, then click <strong>Continue</strong>.
           </p>
         </div>
       </details>`;
@@ -690,15 +703,24 @@ footer {
   }
 
   function selectServiceFromPanel(name, type) {
-    if (type === 'hipaa') {
-      matchedBaa   = gov.baaApprovedServices.find(s => s.name === name) || null;
-      matchedFerpa = null;
+    if (type === 'unlisted') {
+      matchedBaa        = null;
+      matchedFerpa      = null;
+      serviceNotListed  = true;
+      selectedServiceName = serviceInput.value.trim() || 'Unlisted service';
+    } else if (type === 'hipaa') {
+      matchedBaa        = gov.baaApprovedServices.find(s => s.name === name) || null;
+      matchedFerpa      = null;
+      serviceNotListed  = false;
+      selectedServiceName = name;
+      serviceInput.value  = name;
     } else {
-      matchedFerpa = gov.ferpaApprovedServices.find(s => s.name === name) || null;
-      matchedBaa   = null;
+      matchedFerpa      = gov.ferpaApprovedServices.find(s => s.name === name) || null;
+      matchedBaa        = null;
+      serviceNotListed  = false;
+      selectedServiceName = name;
+      serviceInput.value  = name;
     }
-    selectedServiceName = name;
-    serviceInput.value  = name;
 
     // Re-render rows in place (keep panel open)
     const det         = document.getElementById('approved-details');
@@ -713,8 +735,9 @@ footer {
   function refreshSelectedChip() {
     if (!selectedServiceName) { selectedChip.className = 'selected-service-chip hidden'; return; }
     let tag = '';
-    if (matchedBaa)   tag = '<span class="chip-tag chip-tag--hipaa">HIPAA BAA</span>';
-    if (matchedFerpa) tag = '<span class="chip-tag chip-tag--ferpa">FERPA Approved</span>';
+    if (matchedBaa)        tag = '<span class="chip-tag chip-tag--hipaa">HIPAA BAA</span>';
+    if (matchedFerpa)      tag = '<span class="chip-tag chip-tag--ferpa">FERPA Approved</span>';
+    if (serviceNotListed)  tag = '<span class="chip-tag chip-tag--unlisted">Not Approved</span>';
     selectedChip.className = 'selected-service-chip';
     selectedChip.innerHTML = `Evaluating: <strong>${selectedServiceName}</strong> ${tag}`;
   }
@@ -722,7 +745,8 @@ footer {
   // ── Answer logic ─────────────────────────────────────────────────────────
   function outcomeForAnswer(q, answer) {
     if (answer !== 'yes') return null;
-    if (matchedBaa && q.ifYesBaaOverride) return q.ifYesBaaOverride;
+    if (matchedBaa   && q.ifYesBaaOverride)   return q.ifYesBaaOverride;
+    if (matchedFerpa && q.ifYesFerpaOverride) return q.ifYesFerpaOverride;
     return q.ifYes;
   }
 
@@ -806,8 +830,9 @@ footer {
     q1Panel.innerHTML = '';
     q1ContinueWrap.classList.add('hidden');
     answerButtons.classList.remove('hidden');
-    matchedBaa   = null;
-    matchedFerpa = null;
+    matchedBaa        = null;
+    matchedFerpa      = null;
+    serviceNotListed  = false;
     selectedServiceName = serviceInput.value.trim();
     refreshSelectedChip();
     recordAnswer('no');
@@ -817,7 +842,7 @@ footer {
 
   btnRestart.addEventListener('click', () => {
     answers = []; current = 0; finalResult = null;
-    matchedBaa = null; matchedFerpa = null; selectedServiceName = '';
+    matchedBaa = null; matchedFerpa = null; selectedServiceName = ''; serviceNotListed = false;
     progressBar.style.width = '0%';
     serviceInput.value = '';
     selectedChip.className = 'selected-service-chip hidden';
